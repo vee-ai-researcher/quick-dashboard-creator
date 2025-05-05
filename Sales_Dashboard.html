@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Performance Dashboard</title>
+    <!-- Include Plotly.js CDN -->
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <style>
+        /* Glassmorphism Effect */
+        body {
+            background-color: #e0f7fa;
+            font-family: 'Arial', sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            height: 100vh;
+            margin: 0;
+            padding: 0;
+        }
+
+        .dashboard-container {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            backdrop-filter: blur(10px);
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 90%;
+            max-width: 1200px;
+            margin-top: 20px;
+        }
+
+        .upload-section {
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .upload-btn, .analysis-btn {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #008CBA;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+
+        .upload-btn {
+            margin-right: 10px;
+        }
+
+        /* Flex container to display charts */
+        .chart-container {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-evenly;
+            gap: 20px;
+            visibility: hidden; /* Initially hide the charts */
+        }
+
+        .chart {
+            margin: 10px 0;
+            width: 100%;
+            max-width: 500px; /* Limit chart width */
+            height: 300px; /* Fixed height for all charts */
+        }
+
+        .title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            color: #003366;
+        }
+
+        .analysis-container {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="dashboard-container">
+    <div class="upload-section">
+        <h2 class="title">Sales Performance Dashboard</h2>
+        <input type="file" id="uploadInput" class="upload-btn" accept=".json" onchange="handleFileUpload(event)">
+        <button class="analysis-btn" onclick="showAnalysis()">Show Analysis</button>
+    </div>
+
+    <div id="chartsContainer" class="chart-container"></div>
+    <div id="analysisContainer" class="analysis-container"></div>
+</div>
+
+<script>
+// Function to handle file upload and parse the JSON data
+let uploadedData = null;
+
+function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (file && file.name.endsWith('.json')) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const data = JSON.parse(e.target.result);
+            uploadedData = data; // Store the uploaded data for analysis
+        };
+        reader.readAsText(file);
+    } else {
+        alert('Please upload a valid JSON file.');
+    }
+}
+
+// Function to create the dashboard based on uploaded data
+function createDashboard(data) {
+    const orders = data;
+
+    // Prepare the data for the visualizations
+    const salesByMonth = {};
+    const salesByProductLine = {};
+    const salesByDealSize = {};
+    const salesByStatus = {};
+    const salesByTerritory = {};
+    const salesByCountry = {};  // Change from Region to Country
+    const salesByYear = {};
+    const salesByContactLastName = {}; // Changed from SALESPEOPLE to CONTACTLASTNAME
+
+    orders.forEach(order => {
+        const month = new Date(order.ORDERDATE).getMonth() + 1;
+        const year = new Date(order.ORDERDATE).getFullYear();
+        const productLine = order.PRODUCTLINE;
+        const dealSize = order.DEALSIZE;
+        const status = order.STATUS;
+        const territory = order.TERRITORY;
+        const country = order.COUNTRY;  // Use COUNTRY instead of REGION
+        const contactLastName = order.CONTACTLASTNAME; // Use CONTACTLASTNAME instead of SALESPERSON
+        const sales = parseFloat(order.SALES);
+
+        // Sales by Month
+        salesByMonth[month] = (salesByMonth[month] || 0) + sales;
+
+        // Sales by Product Line
+        salesByProductLine[productLine] = (salesByProductLine[productLine] || 0) + sales;
+
+        // Sales by Deal Size
+        salesByDealSize[dealSize] = (salesByDealSize[dealSize] || 0) + sales;
+
+        // Sales by Status
+        salesByStatus[status] = (salesByStatus[status] || 0) + sales;
+
+        // Sales by Territory
+        salesByTerritory[territory] = (salesByTerritory[territory] || 0) + sales;
+
+        // Sales by Country
+        salesByCountry[country] = (salesByCountry[country] || 0) + sales;
+
+        // Sales by Year
+        salesByYear[year] = (salesByYear[year] || 0) + sales;
+
+        // Sales by Contact Last Name (Updated field)
+        salesByContactLastName[contactLastName] = (salesByContactLastName[contactLastName] || 0) + sales;
+    });
+
+    // Create the visualizations
+    const monthData = {
+        x: Object.keys(salesByMonth),
+        y: Object.values(salesByMonth),
+        type: 'bar',
+        marker: { color: '#4CAF50' }
+    };
+    const monthLayout = {
+        title: 'Sales by Month',
+        xaxis: { title: 'Month' },
+        yaxis: { title: 'Sales Amount' }
+    };
+
+    const productLineData = {
+        values: Object.values(salesByProductLine),
+        labels: Object.keys(salesByProductLine),
+        type: 'pie'
+    };
+    const productLineLayout = { title: 'Sales by Product Line' };
+
+    const dealSizeData = {
+        values: Object.values(salesByDealSize),
+        labels: Object.keys(salesByDealSize),
+        type: 'pie'
+    };
+    const dealSizeLayout = { title: 'Sales by Deal Size' };
+
+    const statusData = {
+        x: Object.keys(salesByStatus),
+        y: Object.values(salesByStatus),
+        type: 'bar',
+        marker: { color: '#2196F3' }
+    };
+    const statusLayout = {
+        title: 'Sales by Status',
+        xaxis: { title: 'Status' },
+        yaxis: { title: 'Sales Amount' }
+    };
+
+    const territoryData = {
+        x: Object.keys(salesByTerritory),
+        y: Object.values(salesByTerritory),
+        type: 'bar',
+        marker: { color: '#FF9800' }
+    };
+    const territoryLayout = {
+        title: 'Sales by Territory',
+        xaxis: { title: 'Territory' },
+        yaxis: { title: 'Sales Amount' }
+    };
+
+    // Sales by Country chart (Updated)
+    const countryData = {
+        x: Object.keys(salesByCountry),
+        y: Object.values(salesByCountry),
+        type: 'bar',
+        marker: { color: '#8E44AD' }
+    };
+    const countryLayout = {
+        title: 'Sales by Country',
+        xaxis: { title: 'Country' },
+        yaxis: { title: 'Sales Amount' }
+    };
+
+    // Sales by Contact Last Name (Updated)
+    const contactLastNameData = {
+        x: Object.keys(salesByContactLastName),
+        y: Object.values(salesByContactLastName),
+        type: 'bar',
+        marker: { color: '#2980B9' }
+    };
+    const contactLastNameLayout = {
+        title: 'Sales by Contact Last Name', // Updated title
+        xaxis: { title: 'Contact Last Name' },
+        yaxis: { title: 'Sales Amount' }
+    };
+
+    const yearData = {
+        x: Object.keys(salesByYear),
+        y: Object.values(salesByYear),
+        type: 'line',
+        line: { color: '#F39C12' }
+    };
+    const yearLayout = {
+        title: 'Sales Trend by Year',
+        xaxis: { title: 'Year' },
+        yaxis: { title: 'Sales Amount' }
+    };
+
+    // Insert the charts into the dashboard
+    document.getElementById('chartsContainer').innerHTML = `
+        <div class="chart" id="salesByMonth"></div>
+        <div class="chart" id="salesByProductLine"></div>
+        <div class="chart" id="salesByDealSize"></div>
+        <div class="chart" id="salesByStatus"></div>
+        <div class="chart" id="salesByTerritory"></div>
+        <div class="chart" id="salesByCountry"></div>
+        <div class="chart" id="salesByContactLastName"></div> <!-- Added for Contact Last Name -->
+        <div class="chart" id="salesByYear"></div>
+    `;
+
+    // Render the plots
+    Plotly.newPlot('salesByMonth', [monthData], monthLayout);
+    Plotly.newPlot('salesByProductLine', [productLineData], productLineLayout);
+    Plotly.newPlot('salesByDealSize', [dealSizeData], dealSizeLayout);
+    Plotly.newPlot('salesByStatus', [statusData], statusLayout);
+    Plotly.newPlot('salesByTerritory', [territoryData], territoryLayout);
+    Plotly.newPlot('salesByCountry', [countryData], countryLayout);
+    Plotly.newPlot('salesByContactLastName', [contactLastNameData], contactLastNameLayout); // Updated plot
+    Plotly.newPlot('salesByYear', [yearData], yearLayout);
+
+    // Make the chart container visible after creating the charts
+    document.getElementById('chartsContainer').style.visibility = 'visible';
+}
+
+// Function to show additional analysis when the "Show Analysis" button is clicked
+function showAnalysis() {
+    if (uploadedData) {
+        const orders = uploadedData;
+        const totalSales = orders.reduce((acc, order) => acc + parseFloat(order.SALES), 0);
+        const totalOrders = orders.length;
+        const analysisContent = `
+            <h3>Additional Analysis</h3>
+            <p>Total Sales: $${totalSales.toFixed(2)}</p>
+            <p>Total Orders: ${totalOrders}</p>
+        `;
+        document.getElementById('analysisContainer').innerHTML = analysisContent;
+
+        // After showing the analysis, create and show the charts
+        createDashboard(uploadedData);
+    } else {
+        alert("Please upload a JSON file first.");
+    }
+}
+</script>
+
+</body>
+</html>
